@@ -5,6 +5,13 @@
 #include "pg_plugin.hpp"
 #include <appbase/application.hpp>
 
+enum header_extension_type{
+    feature_activation_type,
+    schedule_change_extension_type,
+    schedule_change_extension_v2_type,
+    backup_block_extension_type
+};
+
 class fill_pg_plugin : public appbase::plugin<fill_pg_plugin> {
   public:
     APPBASE_PLUGIN_REQUIRES((pg_plugin)(fill_plugin))

@@ -5,7 +5,7 @@ This release contains the first release of EOSIO History-Tools `fill-pg` v1.0.0 
 ## docker image
 
 ## 1. clone source code
-`git clone https://github.com/armoniax/history-tools.git && cd history_tools && git submodule update --init --recursive`
+`git clone https://github.com/armoniax/history-tools.git --branch=amax/develop && cd history_tools && git submodule update --init --recursive`
 
 ### 2. build local docker image
 `docker build -t armoniax/amcsync2pg .`
@@ -96,6 +96,7 @@ don't need the blocks since:
   subset of the data within each block; `fill-pg` stores this data. There are apps which use
   `/v1/get_block` incorrectly since their authors didn't realize the blocks miss
   critical data that their applications need.
+* this fill-pg is recommanded to sync with witness chain node
 
 `fill-pg` supports both full history and partial history (`trim` option). This allows users
 to make their own tradeoffs. They can choose between supporting queries covering the entire
