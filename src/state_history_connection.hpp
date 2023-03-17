@@ -11,6 +11,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <fc/exception/exception.hpp>
 
 namespace state_history {
@@ -100,7 +101,7 @@ struct connection : std::enable_shared_from_this<connection> {
         std::string buf((const char *)data.data(), data.size());
         auto is   = eosio::json_token_stream{buf.data()};
         from_json(abi, is);
-        if (abi.version.substr(0, 13) != "eosio::abi/1.") {
+        if (!boost::starts_with(abi.version, "amax::abi/1.")) {
             throw std::runtime_error("unsupported abi version");
         }
         eosio::abi a;

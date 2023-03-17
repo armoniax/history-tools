@@ -149,6 +149,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
     std::map<std::string, std::unique_ptr<table_stream>> table_streams;
     abieos_sql_converter                                 converter;
     std::map<std::string, eosio::abi_type>               abi_types;
+    bool                                                 is_write = false;
 
     fpg_session(fill_postgresql_plugin_impl* my)
         : my(my)
@@ -365,7 +366,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
             };
         }
         query += R"(
-                end 
+                end
             $$ language plpgsql;
         )";
 
@@ -403,6 +404,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
             query += "irreversible=" + std::to_string(head) + ", irreversible_id=" + quote(head_id);
         query += ", first=" + std::to_string(first);
         pipeline.insert(query);
+        is_write = true;
     }
 
     void truncate(work_t& t, pipeline_t& pipeline, uint32_t block) {
@@ -430,7 +432,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         first = std::min(first, head);
     } // truncate
 
-    
+
     template <typename GetBlockResult, typename HandleBlocksTracesDelta>
     bool process_blocks_result(GetBlockResult& result, HandleBlocksTracesDelta&& handler) {
         if (!result.this_block)
@@ -539,7 +541,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
                 receive_traces(
                     result.this_block->block_num, eosio::as_opaque<std::vector<eosio::ship_protocol::transaction_trace>>(*result.traces));
         });
-    } 
+    }
 
     void write_stream(uint32_t block_num, const std::string& name, const std::vector<std::string>& values) {
         if (!first_bulk)
@@ -551,11 +553,14 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
     }
 
     void flush_streams() {
-        for (auto& [_, ts] : table_streams) {
-            ts->writer.complete();
-            ts->t.commit();
+        if (is_write) {
+            for (auto& [_, ts] : table_streams) {
+                ts->writer.complete();
+                ts->t.commit();
+            }
+            table_streams.clear();
         }
-        table_streams.clear();
+        is_write = false;
     }
 
     void close_streams() {
