@@ -121,6 +121,11 @@ endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(fill-pg PRIVATE -fdiagnostics-color=auto)
 endif()
-enable_testing()
-add_subdirectory( unittests )
+
+set(BUILD_TESTS FALSE CACHE BOOL "Build unit tests")
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory( unittests )
+endif()
 

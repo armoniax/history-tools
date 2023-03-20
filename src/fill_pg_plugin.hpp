@@ -5,6 +5,30 @@
 #include "pg_plugin.hpp"
 #include <appbase/application.hpp>
 
+// TODO: move backup_block_extension to ship_protocol.hpp
+
+using block_id_type = eosio::checksum256;
+
+enum header_extension_type {
+    feature_activation_type                 = 0,
+    schedule_change_extension_type,
+    schedule_change_extension_v2_type,
+    backup_block_extension_type
+};
+
+struct backup_block_extension {
+
+    static constexpr uint16_t extension_id() { return header_extension_type::backup_block_extension_type; }
+    static constexpr bool     enforce_unique() { return true; }
+
+    bool                is_backup                  = false; // is backup block
+    eosio::checksum256  previous_backup;                    // previous backup block id
+    eosio::name         previous_backup_producer;           // previous backup block producer
+    uint32_t            contribution               = 0;     // need to boost 10000
+};
+
+EOSIO_REFLECT(backup_block_extension, is_backup,previous_backup, previous_backup_producer, contribution);
+
 class fill_pg_plugin : public appbase::plugin<fill_pg_plugin> {
   public:
     APPBASE_PLUGIN_REQUIRES((pg_plugin)(fill_plugin))

@@ -238,6 +238,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         t.exec("insert into " + converter.schema_name + R"(.fill_status values (0, '', 0, '', 0))");
 
         auto exec = [&t](const auto& stmt) { t.exec(stmt); };
+        converter.create_table("backup_block_info", get_type("backup_block_extension"), "block_num bigint, block_id varchar(64)", {"block_num"}, exec);
         converter.create_table("block_info", get_type("signed_block_header"), "block_num bigint, block_id varchar(64)", {"block_num"}, exec);
 
         converter.create_table(
@@ -293,6 +294,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         static const char* const simple_cases[] = {
             "received_block",
             "transaction_trace",
+            "backup_block_info",
             "block_info",
         };
 
@@ -415,6 +417,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         };
         trunc("received_block");
         trunc("transaction_trace");
+        trunc("backup_block_info");
         trunc("block_info");
         for (auto& table : connection->abi.tables) {
             trunc(table.type);
@@ -578,12 +581,37 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         first_bulk = 0;
     }
 
+    eosio::input_stream get_backup_extension_bin(signed_block_header& header){
+        for( size_t i = 0; i < header.header_extensions.size(); ++i ) {
+            auto& e = header.header_extensions[i];
+            auto id = e.type;
+            if( id == header_extension_type::backup_block_extension_type ){
+               auto opq = eosio::as_opaque<backup_block_extension>( e.data );
+                return opq.get();
+            }
+        }
+        return eosio::input_stream();
+    }
+
     void receive_block(uint32_t block_num, const eosio::checksum256& block_id, const eosio::opaque<signed_block_header>& opq) {
-        auto&                    abi_type = get_type("signed_block_header");
-        std::vector<std::string> values{std::to_string(block_num), sql_str(block_id)};
+        //block_info table.
+        auto&                    abi_type = get_type( "signed_block_header" );
+        std::vector<std::string> block_info_values{std::to_string(block_num), sql_str(block_id)};
         auto                     bin = opq.get();
-        converter.to_sql_values(bin, *abi_type.as_struct(), values);
-        write_stream(block_num, "block_info", values);
+        eosio::input_stream      sign_block_header(bin);
+        converter.to_sql_values( bin, *abi_type.as_struct(), block_info_values );
+        write_stream( block_num, "block_info", block_info_values );
+
+        //backup_block_info table.
+        signed_block_header                   sbh;
+        eosio::from_bin( sbh, sign_block_header );
+        eosio::input_stream      backup_ext_bin =  get_backup_extension_bin( sbh );
+        auto&                    abi_backup = get_type( "backup_block_extension" );
+        std::vector<std::string> backup_block_info_values{std::to_string(block_num), sql_str(block_id)};
+        if( backup_ext_bin.remaining() > 0 ){
+           converter.to_sql_values( backup_ext_bin, *abi_backup.as_struct(), backup_block_info_values );
+           write_stream( block_num, "backup_block_info", backup_block_info_values );
+        }
     }
 
     void receive_deltas(uint32_t block_num, eosio::opaque<std::vector<eosio::ship_protocol::table_delta>> delta, bool bulk) {

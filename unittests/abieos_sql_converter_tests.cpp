@@ -1,6 +1,6 @@
 #define BOOST_TEST_MODULE ship_sql
 #include "test_protocol.hpp"
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 namespace state_history {
 namespace pg {
@@ -75,7 +75,7 @@ struct test_fixture_t {
         converter.register_basic_types<basic_types>();
     }
 
-    template <typename T> 
+    template <typename T>
     abieos_sql_converter::union_fields_t
     get_union_fields() {
         std::string type_name = get_type_name((T*)nullptr);
@@ -91,7 +91,7 @@ BOOST_TEST_SPECIALIZED_COLLECTION_COMPARE(std::vector<std::string>)
 BOOST_AUTO_TEST_SUITE(ship_sql_test_suite)
 
 BOOST_FIXTURE_TEST_CASE(nested_varaint_test, test_fixture_t) {
-    
+
     using namespace std::string_literals;
 
     abi.add_type<test_protocol::global_property>();
@@ -222,7 +222,7 @@ std::vector<std::string> to_sql_values(abieos_sql_converter& converter, const eo
 }
 
 BOOST_FIXTURE_TEST_CASE(to_sql_values_test, test_fixture_t) {
-    
+
     abi.add_type<test_protocol::global_property>();
     using namespace eosio::literals;
 
@@ -284,18 +284,18 @@ BOOST_FIXTURE_TEST_CASE(to_sql_values_test, test_fixture_t) {
                                                  "\\N",
                                                  "\\N",
                                                  R"xxx((,0,0,0,0,0,"{}","{}","{}","(\\"{}\\",\\"\\\\\\\\\\\\\\\\x\\",,\\"{}\\",\\"{}\\")"))xxx"};
-        BOOST_TEST(values == expected);   
+        BOOST_TEST(values == expected);
 
         transaction.partial.emplace(test_protocol::partial_transaction_v1{});
         values = to_sql_values(converter, transaction_trace_abi, test_protocol::transaction_trace{transaction});
-        
+
 
         expected = std::vector<std::string>{
             "", "executed", "0", "0", "0", "0", "false", "{}", "\\N", "\\N", "\\N", "\\N", R"xxx((,0,0,0,0,0,"{}","{}","{}",))xxx"};
         BOOST_TEST(values == expected);
     }
-    { 
-        test_protocol::account_metadata_v0 metadata; 
+    {
+        test_protocol::account_metadata_v0 metadata;
         auto& account_metadata_abi = *abi.add_type<test_protocol::account_metadata>();
         std::vector<std::string> values = to_sql_values(converter, account_metadata_abi, test_protocol::account_metadata{metadata});
         // std::copy(values.begin(), values.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
