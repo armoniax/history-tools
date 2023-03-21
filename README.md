@@ -5,7 +5,7 @@ This release contains the first release of EOSIO History-Tools `fill-pg` v1.0.0 
 ## docker image
 
 ## 1. clone source code
-`git clone https://github.com/armoniax/history-tools.git --branch=amax/develop && cd history_tools && git submodule update --init --recursive`
+`git clone https://github.com/armoniax/history-tools.git && cd history_tools && git submodule update --init --recursive`
 
 ### 2. build local docker image
 `docker build -t armoniax/amcsync2pg .`
