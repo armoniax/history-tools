@@ -238,7 +238,7 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         t.exec("insert into " + converter.schema_name + R"(.fill_status values (0, '', 0, '', 0))");
 
         auto exec = [&t](const auto& stmt) { t.exec(stmt); };
-        converter.create_table("backup_block_info", get_type("backup_block_extension"), "block_num bigint, block_id varchar(64)", {"block_num"}, exec);
+        converter.create_table("backup_block_info", get_type("previous_backup_info"), "block_num bigint, block_id varchar(64)", {"block_num"}, exec);
         converter.create_table("block_info", get_type("signed_block_header"), "block_num bigint, block_id varchar(64)", {"block_num"}, exec);
 
         converter.create_table(
@@ -601,11 +601,14 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         signed_block_header                   sbh;
         eosio::from_bin( sbh, sign_block_header );
         eosio::input_stream      backup_ext_bin =  get_backup_extension_bin( sbh );
-        auto&                    abi_backup = get_type( "backup_block_extension" );
-        std::vector<std::string> backup_block_info_values{std::to_string(block_num), sql_str(block_id)};
+        backup_block_extension                bbe;
         if( backup_ext_bin.remaining() > 0 ){
-           converter.to_sql_values( backup_ext_bin, *abi_backup.as_struct(), backup_block_info_values );
-           write_stream( block_num, "backup_block_info", backup_block_info_values );
+            eosio::from_bin( bbe, backup_ext_bin );
+            if( bbe.previous_backup ){
+                std::vector<std::string> backup_block_info_values{std::to_string(block_num), sql_str(block_id), sql_str(bbe.previous_backup->id),
+                sql_str(bbe.previous_backup->producer), std::to_string(bbe.previous_backup->contribution)};
+                write_stream( block_num, "backup_block_info", backup_block_info_values );
+            }
         }
     }
 
