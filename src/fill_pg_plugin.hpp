@@ -16,18 +16,23 @@ enum header_extension_type {
     backup_block_extension_type
 };
 
+struct previous_backup_info {
+    eosio::checksum256  id;                    // previous backup block id
+    eosio::name         producer;              // previous backup block producer
+    uint32_t            contribution  = 0;     // need to boost 10000
+};
+
 struct backup_block_extension {
 
     static constexpr uint16_t extension_id() { return header_extension_type::backup_block_extension_type; }
     static constexpr bool     enforce_unique() { return true; }
 
     bool                is_backup                  = false; // is backup block
-    eosio::checksum256  previous_backup;                    // previous backup block id
-    eosio::name         previous_backup_producer;           // previous backup block producer
-    uint32_t            contribution               = 0;     // need to boost 10000
+    std::optional<previous_backup_info>             previous_backup = {};
 };
 
-EOSIO_REFLECT(backup_block_extension, is_backup,previous_backup, previous_backup_producer, contribution);
+EOSIO_REFLECT(previous_backup_info, id, producer, contribution);
+EOSIO_REFLECT(backup_block_extension, is_backup, previous_backup);
 
 class fill_pg_plugin : public appbase::plugin<fill_pg_plugin> {
   public:

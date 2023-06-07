@@ -23,6 +23,7 @@ struct connection_callbacks {
     virtual bool received(eosio::ship_protocol::get_blocks_result_v0& /*result*/) { return true; }
     virtual bool received(eosio::ship_protocol::get_blocks_result_v1& /*result*/) { return true; }
     virtual bool received(eosio::ship_protocol::get_blocks_result_v2& /*result*/) { return true; }
+    virtual bool received(eosio::ship_protocol::get_blocks_result_v101& /*result*/) { return true; }
     virtual void closed(bool retry) = 0;
 };
 
@@ -45,7 +46,7 @@ struct connection : std::enable_shared_from_this<connection> {
     tcp::resolver                                resolver;
     boost::beast::websocket::stream<tcp::socket> stream;
     bool                                         have_abi  = false;
-    bool                                         have_get_blocks_request_v1 = false;
+    bool                                         have_get_blocks_request_v101 = false;
     abi_def                                      abi                       = {};
     std::map<std::string, abi_type>              abi_types{};
 
@@ -108,10 +109,11 @@ struct connection : std::enable_shared_from_this<connection> {
         eosio::convert(abi, a);
         have_abi  = true;
         try {
-            have_get_blocks_request_v1 = a.get_type("get_blocks_request_v1");
+            have_get_blocks_request_v101 = a.get_type("get_blocks_request_v101");
         }
         catch (...) {
-            ilog("get_blocks_request_v1 not available, use get_blocks_request_v0 instead");
+            elog("get_blocks_request_v101 not available, use old history tools which supports get_blocks_request_v0");
+            throw std::runtime_error("unsupported abi version");
         }
         if (callbacks)
             callbacks->received_abi(std::move(a));
@@ -126,17 +128,17 @@ struct connection : std::enable_shared_from_this<connection> {
     }
 
     void request_blocks(uint32_t start_block_num, const std::vector<eosio::ship_protocol::block_position>& positions) {
-        if (have_get_blocks_request_v1) {
-            eosio::ship_protocol::get_blocks_request_v1 req;
+        if (have_get_blocks_request_v101) {
+            eosio::ship_protocol::get_blocks_request_v101 req;
             req.start_block_num        = start_block_num;
             req.end_block_num          = 0xffff'ffff;
             req.max_messages_in_flight = 0xffff'ffff;
             req.have_positions         = positions;
             req.irreversible_only      = false;
-            req.fetch_block            = false;
+            req.fetch_block            = true;
             req.fetch_traces           = true;
             req.fetch_deltas           = true;
-            req.fetch_block_header     = true;
+            req.fetch_backup           = true;
             send(req);
         }
         else {
