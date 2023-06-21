@@ -173,14 +173,16 @@ struct connection : std::enable_shared_from_this<connection> {
     }
 
     template <typename F>
-    void catch_and_close(F f) {
+    void catch_and_close(F f, const char* where) {
         try {
             f();
         } catch (const std::exception& e) {
             elog("${e}", ("e", e.what()));
+            elog("${w}", ("w", where));
             close(false);
         } catch (...) {
             elog("unknown exception");
+            elog("${w}", ("w", where));
             close(false);
         }
     }
@@ -189,7 +191,7 @@ struct connection : std::enable_shared_from_this<connection> {
     void enter_callback(error_code ec, const char* what, F f) {
         if (ec)
             return on_fail(ec, what);
-        catch_and_close(f);
+        catch_and_close(f, what);
     }
 
     void on_fail(error_code ec, const char* what) {
